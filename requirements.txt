@@ -1,6 +1,5 @@
 streamlit
-roboflow
+inference-sdk
 opencv-python-headless
-pillow
 numpy
-pandas
+pillow

@@ -3,8 +3,8 @@ import tempfile
 import cv2
 import numpy as np
 import streamlit as st
+from inference_sdk import InferenceHTTPClient
 from PIL import Image
-from roboflow import Roboflow
 
 
 st.set_page_config(
@@ -15,7 +15,7 @@ st.set_page_config(
 
 st.title("🧱 Wall Crack Detection")
 
-# Read the API key from Streamlit Secrets
+# Read API key securely
 try:
     api_key = st.secrets["ROBOFLOW_API_KEY"]
 except KeyError:
@@ -25,16 +25,15 @@ except KeyError:
     )
     st.stop()
 
-# Connect to the Roboflow hosted model
-rf = Roboflow(api_key=api_key)
-
-project = rf.workspace().project(
-    "wall-crack-detection-demo"
+# Roboflow Serverless Hosted API client
+client = InferenceHTTPClient(
+    api_url="https://serverless.roboflow.com",
+    api_key=api_key,
 )
 
-model = project.version(3).model
+# Roboflow project ID and version
+MODEL_ID = "wall-crack-detection-demo/3"
 
-# Upload image
 uploaded = st.file_uploader(
     "Upload Image",
     type=["jpg", "jpeg", "png"],
@@ -44,31 +43,36 @@ if uploaded is None:
     st.info("Please upload a wall image to begin detection.")
     st.stop()
 
-# Open and standardize the image
 image = Image.open(uploaded).convert("RGB")
 
-# Save temporarily because Roboflow predict() expects a file path
+# Save uploaded image temporarily
 with tempfile.NamedTemporaryFile(
     delete=False,
     suffix=".jpg",
 ) as temp:
     image.save(temp.name)
+    temp_path = temp.name
 
-    prediction = model.predict(
-        temp.name,
-        confidence=50,
-        overlap=50,
-    ).json()
+# Run hosted inference
+try:
+    prediction = client.infer(
+        temp_path,
+        model_id=MODEL_ID,
+    )
+except Exception as error:
+    st.error("Roboflow inference failed.")
+    st.exception(error)
+    st.stop()
 
-# Convert image to a NumPy array for OpenCV drawing
 image_np = np.array(image).copy()
 
-# Draw bounding boxes
-for pred in prediction.get("predictions", []):
-    x = pred["x"]
-    y = pred["y"]
-    width = pred["width"]
-    height = pred["height"]
+predictions = prediction.get("predictions", [])
+
+for pred in predictions:
+    x = float(pred["x"])
+    y = float(pred["y"])
+    width = float(pred["width"])
+    height = float(pred["height"])
 
     x1 = int(x - width / 2)
     y1 = int(y - height / 2)
@@ -98,7 +102,6 @@ for pred in prediction.get("predictions", []):
         2,
     )
 
-# Display results
 col1, col2 = st.columns(2)
 
 with col1:
@@ -115,29 +118,29 @@ with col2:
         use_container_width=True,
     )
 
-# Detection summary
-predictions = prediction.get("predictions", [])
-
 st.subheader("Detection Summary")
 
 if predictions:
-    st.metric(
-        "Detected Crack Regions",
-        len(predictions),
-    )
-
     confidences = [
         float(pred["confidence"])
         for pred in predictions
     ]
 
-    st.metric(
-        "Highest Confidence",
-        f"{max(confidences):.2f}",
-    )
+    metric1, metric2 = st.columns(2)
+
+    with metric1:
+        st.metric(
+            "Detected Crack Regions",
+            len(predictions),
+        )
+
+    with metric2:
+        st.metric(
+            "Highest Confidence",
+            f"{max(confidences):.2f}",
+        )
 else:
     st.warning("No wall cracks were detected.")
 
-# Optional raw API output
 with st.expander("View Roboflow API response"):
     st.json(prediction)
