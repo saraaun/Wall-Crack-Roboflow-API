@@ -48,9 +48,9 @@ WORKSPACE_NAME = "sarawans-workspace"
 #     "vwall-crack-detection-demo-6-yolo11n-t1-logic"
 # )
 
-# WORKFLOW_ID = "wall-crack-detection-demo" # Corrected workflow using Roboflow's Agent
+WORKFLOW_ID = "wall-crack-detection-demo" # Corrected workflow using Roboflow's Agent
 
-WORKFLOW_ID = "custom-workflow"
+# WORKFLOW_ID = "custom-workflow"
 
 def get_api_key() -> str:
     """Read the Roboflow API key from Streamlit Secrets."""
