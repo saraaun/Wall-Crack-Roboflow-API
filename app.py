@@ -325,7 +325,7 @@ minimum_confidence = st.sidebar.slider(
     "Displayed Confidence Threshold",
     min_value=0.0,
     max_value=1.0,
-    value=0.10,
+    value=0.50,
     step=0.01,
     help=(
         "This filters predictions after they are returned "
