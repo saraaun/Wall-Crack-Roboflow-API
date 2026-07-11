@@ -114,9 +114,15 @@ The dataset version used to train the model was generated with the following pre
 - Resize (Stretch to 640 × 640)
 - Contrast Stretching
 
-These preprocessing operations were applied during dataset preparation and model training.
+# Roboflow Dataset Preprocessing
 
-The deployed application uses a Roboflow Workflow for cloud inference. Depending on the Workflow configuration and Roboflow inference runtime, prediction results may differ slightly from those shown in the Roboflow Dataset/Test interface. When reproducibility is critical, the inference pipeline should be validated against the deployed Workflow.
+The dataset version uses the following preprocessing:
+
+- Auto-Orient
+- Resize (Stretch to 640 × 640)
+- Contrast Stretching
+
+Because inference is performed inside the Roboflow Workflow, the predictions closely match those obtained from the Roboflow testing interface.
 
 ---
 
@@ -133,6 +139,9 @@ Wall-Crack-Roboflow-Workflow/
 │
 └── .streamlit/
     └── secrets.toml
+└── images/
+    ├── interface.png
+    ├── 7119-175.jpg
 ```
 
 ---
