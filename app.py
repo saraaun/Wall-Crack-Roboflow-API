@@ -33,10 +33,17 @@ st.write(
 
 WORKSPACE_NAME = "sarawans-workspace"
 
-WORKFLOW_ID = (
-    "wall-crack-detection-demo-"
-    "vwall-crack-detection-demo-6-yolo11n-t1-logic"
-)
+# WORKFLOW_ID = (
+#     "wall-crack-detection-demo-"
+#     "vwall-crack-detection-demo-6-yolo11n-t1-logic"
+# )
+
+# WORKFLOW_ID = (
+#     "wall-crack-detection-demo-"
+#     "vwall-crack-detection-demo-6-yolo11n-t1-logic"
+# )
+
+WORKFLOW_ID = "wall-crack-detection-demo-vwall-crack-detection-demo-6-yolo11n-t1-logic"
 
 
 def get_api_key() -> str:
