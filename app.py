@@ -1,5 +1,6 @@
-import os
-import tempfile
+# Corrected app.py for WORKFLOW_ID = "custom-workflow" or "Custom Workflow" of Model V3
+import base64
+from io import BytesIO
 from typing import Any
 
 import cv2
@@ -374,24 +375,27 @@ except Exception as error:
 
 
 # ---------------------------------------------------------
-# Save temporary image and run Workflow
+# Encode image in memory and run Workflow
 # ---------------------------------------------------------
-
-temporary_path = None
+#
+# NOTE: We base64-encode the image ourselves and pass the
+# encoded string directly to run_workflow(). Passing a local
+# file path can cause the SDK to serialize the image as a raw
+# NumPy payload under the hood, which Roboflow's hosted
+# serverless Workflow endpoint rejects with a 400 error
+# ("NumPy image type is not supported in this configuration
+# of inference"). Base64 avoids that entirely and also means
+# we don't need any temp files on disk.
 
 try:
-    with tempfile.NamedTemporaryFile(
-        delete=False,
-        suffix=".jpg",
-    ) as temporary_file:
-        original_image.save(
-            temporary_file.name,
-            format="JPEG",
-            quality=100,
-            subsampling=0,
-        )
-
-        temporary_path = temporary_file.name
+    buffered = BytesIO()
+    original_image.save(
+        buffered,
+        format="JPEG",
+        quality=100,
+        subsampling=0,
+    )
+    image_b64 = base64.b64encode(buffered.getvalue()).decode("ascii")
 
     with st.spinner(
         "Analysing the image with Roboflow..."
@@ -400,7 +404,7 @@ try:
             workspace_name=WORKSPACE_NAME,
             workflow_id=WORKFLOW_ID,
             images={
-                "image": temporary_path,
+                "image": image_b64,
             },
             # Disable cache while debugging a new Workflow.
             use_cache=False,
@@ -410,13 +414,6 @@ except Exception as error:
     st.error("Roboflow Workflow inference failed.")
     st.exception(error)
     st.stop()
-
-finally:
-    if (
-        temporary_path
-        and os.path.exists(temporary_path)
-    ):
-        os.remove(temporary_path)
 
 
 # ---------------------------------------------------------

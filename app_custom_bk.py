@@ -1,4 +1,5 @@
-# app.py for WORKFLOW_ID = "wall-crack-detection-demo" or Model V3's Workflow "Wall Crack Detection - Demo vwall-crack-detection-demo-6-yolo11n-t1 Logic"
+# Old workflow with empty return for WORKFLOW_ID = "custom-workflow" or "Custom Workflow" of Model V3
+# The corrected version is the current app.py
 import os
 import tempfile
 from typing import Any
@@ -7,7 +8,7 @@ import cv2
 import numpy as np
 import streamlit as st
 from inference_sdk import InferenceHTTPClient
-from PIL import Image
+from PIL import Image, ImageOps
 
 
 # ---------------------------------------------------------
@@ -24,7 +25,7 @@ st.title("🧱 Wall Crack Detection")
 
 st.write(
     "Upload an image of a wall to detect visible cracks "
-    "using a YOLO11 model hosted through Roboflow."
+    "using a YOLO11 model hosted through a Roboflow Workflow."
 )
 
 
@@ -34,14 +35,11 @@ st.write(
 
 WORKSPACE_NAME = "sarawans-workspace"
 
-# WORKFLOW_ID = (
-#     "wall-crack-detection-demo-"
-#     "vwall-crack-detection-demo-6-yolo11n-t1-logic"
-# )
+# IMPORTANT:
+# Copy the exact Workflow ID from:
+# Roboflow Workflow → Deploy → generated Python code
+WORKFLOW_ID = "custom-workflow"
 
-WORKFLOW_ID = "wall-crack-detection-demo" # Corrected workflow using Roboflow's Agent
-
-# WORKFLOW_ID = "custom-workflow"
 
 def get_api_key() -> str:
     """Read the Roboflow API key from Streamlit Secrets."""
@@ -51,14 +49,16 @@ def get_api_key() -> str:
     except KeyError:
         st.error(
             "The Roboflow API key was not found.\n\n"
-            "Add the following entry in Streamlit Cloud Secrets:\n\n"
-            '`ROBOFLOW_API_KEY = "YOUR_NEW_API_KEY"`'
+            "Add this entry in Streamlit Cloud Secrets:\n\n"
+            '`ROBOFLOW_API_KEY = "YOUR_API_KEY"`'
         )
         st.stop()
 
 
 @st.cache_resource
-def create_roboflow_client(api_key: str) -> InferenceHTTPClient:
+def create_roboflow_client(
+    api_key: str,
+) -> InferenceHTTPClient:
     """Create and cache the Roboflow API client."""
 
     return InferenceHTTPClient(
@@ -68,13 +68,11 @@ def create_roboflow_client(api_key: str) -> InferenceHTTPClient:
 
 
 # ---------------------------------------------------------
-# Workflow-result parsing
+# Workflow-output parsing
 # ---------------------------------------------------------
 
 def is_detection(item: Any) -> bool:
-    """
-    Check whether a dictionary looks like an object-detection result.
-    """
+    """Check whether a dictionary resembles a detection."""
 
     if not isinstance(item, dict):
         return False
@@ -90,13 +88,14 @@ def is_detection(item: Any) -> bool:
     return required_keys.issubset(item.keys())
 
 
-def find_detections(data: Any) -> list[dict]:
+def recursively_find_detections(
+    data: Any,
+) -> list[dict]:
     """
-    Recursively search a Roboflow Workflow response for detection objects.
+    Recursively search nested Workflow output for detections.
 
-    Workflow outputs can be nested differently depending on the output
-    blocks configured in Roboflow. This function searches dictionaries
-    and lists until it finds objects containing bounding-box fields.
+    This is used as a fallback because Workflow results can have
+    different nesting depending on the configured output block.
     """
 
     detections: list[dict] = []
@@ -106,29 +105,110 @@ def find_detections(data: Any) -> list[dict]:
             if is_detection(item):
                 detections.append(item)
             else:
-                detections.extend(find_detections(item))
+                detections.extend(
+                    recursively_find_detections(item)
+                )
 
     elif isinstance(data, dict):
         if is_detection(data):
             detections.append(data)
         else:
             for value in data.values():
-                detections.extend(find_detections(value))
+                detections.extend(
+                    recursively_find_detections(value)
+                )
 
     return detections
 
 
+def extract_workflow_predictions(
+    workflow_result: Any,
+) -> list[dict]:
+    """
+    Extract detections from the Workflow output named 'model_output'.
+
+    Expected possibilities include:
+
+    [
+        {
+            "model_output": {
+                "predictions": [...]
+            }
+        }
+    ]
+
+    or:
+
+    [
+        {
+            "model_output": [...]
+        }
+    ]
+    """
+
+    if not workflow_result:
+        return []
+
+    # run_workflow often returns one result item per image.
+    if isinstance(workflow_result, list):
+        if len(workflow_result) == 0:
+            return []
+
+        result_item = workflow_result[0]
+    else:
+        result_item = workflow_result
+
+    if not isinstance(result_item, dict):
+        return recursively_find_detections(workflow_result)
+
+    model_output = result_item.get("model_output")
+
+    # Case 1:
+    # {"model_output": {"predictions": [...]}}
+    if isinstance(model_output, dict):
+        predictions = model_output.get(
+            "predictions",
+            model_output.get(
+                "detections",
+                model_output.get("results", []),
+            ),
+        )
+
+        if isinstance(predictions, list):
+            extracted = [
+                item
+                for item in predictions
+                if isinstance(item, dict)
+            ]
+
+            if extracted:
+                return extracted
+
+    # Case 2:
+    # {"model_output": [...]}
+    elif isinstance(model_output, list):
+        extracted = [
+            item
+            for item in model_output
+            if isinstance(item, dict)
+        ]
+
+        if extracted:
+            return extracted
+
+    # Fallback: search the complete output recursively.
+    return recursively_find_detections(workflow_result)
+
+
 # ---------------------------------------------------------
-# Drawing functions
+# Drawing function
 # ---------------------------------------------------------
 
 def draw_detections(
     image: Image.Image,
     detections: list[dict],
 ) -> np.ndarray:
-    """
-    Draw bounding boxes and confidence labels on an RGB image.
-    """
+    """Draw bounding boxes and labels on an RGB image."""
 
     annotated = np.array(image).copy()
 
@@ -143,16 +223,19 @@ def draw_detections(
 
         class_name = detection.get(
             "class",
-            detection.get("class_name", "wall-crack"),
+            detection.get(
+                "class_name",
+                "wall-crack",
+            ),
         )
 
-        # Roboflow returns centre-based bounding boxes.
+        # Roboflow detection coordinates are centre-based.
         x1 = int(x - width / 2)
         y1 = int(y - height / 2)
         x2 = int(x + width / 2)
         y2 = int(y + height / 2)
 
-        # Keep box coordinates inside the image.
+        # Keep coordinates inside the image.
         x1 = max(0, min(x1, image_width - 1))
         y1 = max(0, min(y1, image_height - 1))
         x2 = max(0, min(x2, image_width - 1))
@@ -181,24 +264,40 @@ def draw_detections(
 
         text_width, text_height = text_size
 
-        label_y1 = max(0, y1 - text_height - baseline - 10)
-        label_y2 = max(text_height + baseline + 10, y1)
+        label_top = max(
+            0,
+            y1 - text_height - baseline - 10,
+        )
+
+        label_bottom = max(
+            text_height + baseline + 10,
+            y1,
+        )
 
         cv2.rectangle(
             annotated,
-            (x1, label_y1),
+            (x1, label_top),
             (
-                min(x1 + text_width + 10, image_width - 1),
-                label_y2,
+                min(
+                    x1 + text_width + 10,
+                    image_width - 1,
+                ),
+                label_bottom,
             ),
             (255, 0, 0),
             -1,
         )
 
+        text_y = (
+            y1 - 7
+            if y1 > text_height + 10
+            else text_height + 5
+        )
+
         cv2.putText(
             annotated,
             label,
-            (x1 + 5, max(text_height + 2, y1 - 7)),
+            (x1 + 5, text_y),
             font,
             font_scale,
             (255, 255, 255),
@@ -225,20 +324,20 @@ st.sidebar.header("Detection Settings")
 
 minimum_confidence = st.sidebar.slider(
     "Displayed Confidence Threshold",
-    min_value=0.1,
+    min_value=0.0,
     max_value=1.0,
-    value=0.50,
+    value=0.10,
     step=0.01,
     help=(
-        "This filters results returned by the Workflow. "
-        "It does not change the confidence setting inside "
-        "the Roboflow Workflow itself."
+        "This filters predictions after they are returned "
+        "by the Workflow. It does not change the confidence "
+        "setting inside Roboflow."
     ),
 )
 
 show_raw_output = st.sidebar.checkbox(
     "Show raw Workflow output",
-    value=False,
+    value=True,
 )
 
 
@@ -261,15 +360,23 @@ if uploaded_file is None:
 # ---------------------------------------------------------
 
 try:
-    original_image = Image.open(uploaded_file).convert("RGB")
+    original_image = Image.open(uploaded_file)
+
+    # Respect EXIF orientation, then convert to RGB.
+    original_image = ImageOps.exif_transpose(
+        original_image
+    ).convert("RGB")
+
 except Exception as error:
-    st.error("The uploaded file could not be opened as an image.")
+    st.error(
+        "The uploaded file could not be opened as an image."
+    )
     st.exception(error)
     st.stop()
 
 
 # ---------------------------------------------------------
-# Save temporary image and run Roboflow Workflow
+# Save temporary image and run Workflow
 # ---------------------------------------------------------
 
 temporary_path = None
@@ -282,18 +389,23 @@ try:
         original_image.save(
             temporary_file.name,
             format="JPEG",
-            quality=95,
+            quality=100,
+            subsampling=0,
         )
+
         temporary_path = temporary_file.name
 
-    with st.spinner("Analysing the image with Roboflow..."):
+    with st.spinner(
+        "Analysing the image with Roboflow..."
+    ):
         workflow_result = client.run_workflow(
             workspace_name=WORKSPACE_NAME,
             workflow_id=WORKFLOW_ID,
             images={
                 "image": temporary_path,
             },
-            use_cache=True,
+            # Disable cache while debugging a new Workflow.
+            use_cache=False,
         )
 
 except Exception as error:
@@ -302,7 +414,10 @@ except Exception as error:
     st.stop()
 
 finally:
-    if temporary_path and os.path.exists(temporary_path):
+    if (
+        temporary_path
+        and os.path.exists(temporary_path)
+    ):
         os.remove(temporary_path)
 
 
@@ -310,18 +425,32 @@ finally:
 # Extract and filter detections
 # ---------------------------------------------------------
 
-all_detections = find_detections(workflow_result)
+all_detections = extract_workflow_predictions(
+    workflow_result
+)
 
 detections = [
     detection
     for detection in all_detections
-    if float(detection.get("confidence", 0.0))
-    >= minimum_confidence
+    if float(
+        detection.get("confidence", 0.0)
+    ) >= minimum_confidence
 ]
 
 
 # ---------------------------------------------------------
-# Draw results
+# Diagnostics
+# ---------------------------------------------------------
+
+st.caption(
+    f"Workflow returned {len(all_detections)} raw "
+    f"detection(s); {len(detections)} remain after "
+    f"the displayed threshold."
+)
+
+
+# ---------------------------------------------------------
+# Draw result
 # ---------------------------------------------------------
 
 annotated_image = draw_detections(
@@ -432,12 +561,12 @@ if detections:
 else:
     st.warning(
         "No wall crack was detected above the selected "
-        "confidence threshold."
+        "displayed confidence threshold."
     )
 
 
 # ---------------------------------------------------------
-# Optional debugging output
+# Raw Workflow result
 # ---------------------------------------------------------
 
 if show_raw_output:
