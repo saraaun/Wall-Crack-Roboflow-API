@@ -43,10 +43,12 @@ WORKSPACE_NAME = "sarawans-workspace"
 #     "vwall-crack-detection-demo-6-yolo11n-t1-logic"
 # )
 
-WORKFLOW_ID = (
-    "wall-crack-detection-demo-"
-    "vwall-crack-detection-demo-6-yolo11n-t1-logic"
-)
+# WORKFLOW_ID = (
+#     "wall-crack-detection-demo-"
+#     "vwall-crack-detection-demo-6-yolo11n-t1-logic"
+# )
+
+WORKFLOW_ID = "wall-crack-detection-demo"
 
 # WORKFLOW_ID = "custom-workflow"
 
