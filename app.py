@@ -1,4 +1,9 @@
 # Corrected app.py for WORKFLOW_ID = "custom-workflow" or "Custom Workflow" of Model V3
+"""
+What modified from app1.py
+- Removed tempfile/os entirely — the image is now base64-encoded straight from memory (BytesIO) and passed directly to run_workflow(). No more temp file writes, no more NumPy image type is not supported errors.
+- Everything else — the recursive detection parser, draw_detections, sidebar controls, summary metrics, raw output viewer — is unchanged, since none of that was ever the problem.
+"""
 import base64
 from io import BytesIO
 from typing import Any
