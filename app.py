@@ -48,7 +48,7 @@ WORKSPACE_NAME = "sarawans-workspace"
 #     "vwall-crack-detection-demo-6-yolo11n-t1-logic"
 # )
 
-WORKFLOW_ID = "wall-crack-detection-demo"
+WORKFLOW_ID = "wall-crack-detection-demo" # Corrected workflow using Roboflow's Agent
 
 # WORKFLOW_ID = "custom-workflow"
 
@@ -234,10 +234,10 @@ st.sidebar.header("Detection Settings")
 
 minimum_confidence = st.sidebar.slider(
     "Displayed Confidence Threshold",
-    min_value=0.0,
+    min_value=0.1,
     max_value=1.0,
     value=0.50,
-    step=0.05,
+    step=0.01,
     help=(
         "This filters results returned by the Workflow. "
         "It does not change the confidence setting inside "

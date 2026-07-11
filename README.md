@@ -1,36 +1,102 @@
-# 🧱 Wall Crack Detection using Roboflow Hosted API and Streamlit
+# 🧱 Wall Crack Detection using Roboflow Workflows and Streamlit
 
-A lightweight web application for detecting wall cracks using a **YOLOv11 object detection model** trained with **Roboflow** and deployed through the **Roboflow Hosted Inference API**.
+A lightweight web application for detecting wall cracks using a **YOLO11 object detection model** trained with **Roboflow** and deployed through a **Roboflow Workflow**.
 
-Unlike the local deployment version that loads `best.pt`, this application sends uploaded images to the Roboflow cloud for inference and displays the detection results in a user-friendly Streamlit interface.
+Instead of hosting the trained model locally, this application sends uploaded images to a Roboflow Workflow running in the cloud. The workflow performs inference using the trained YOLO11 model and returns the detection results, which are then visualized in a user-friendly Streamlit interface.
 
 ---
 
 ## 🌐 Live Demo
 
-> **Coming Soon**
+**Streamlit Cloud:** https://wall-crack-roboflow-workflow.streamlit.app/
 
 ---
 
 ## Features
 
 - 🧱 Detect wall cracks from uploaded images
-- ☁️ Cloud inference using Roboflow Hosted API
-- 🎯 Adjustable confidence threshold
-- 📊 Detection summary with confidence scores
+- ☁️ Cloud inference using Roboflow Workflows
+- 📦 No local deep learning model required
+- 🎯 Adjustable confidence threshold for visualization
 - 🖼️ Side-by-side original and annotated images
-- ⚡ Lightweight deployment (no PyTorch model required)
-- 🚀 Ready for deployment on Streamlit Community Cloud
+- 📊 Detection summary with confidence statistics
+- 🔒 Secure API key management using Streamlit Secrets
+- 🚀 Easy deployment on Streamlit Community Cloud
 
 ---
 
-## Model Information
+# System Architecture
 
-**Task:** Object Detection
+```
+             Upload Image
+                   │
+                   ▼
+        Streamlit Web Application
+                   │
+                   ▼
+      Roboflow Workflow (Cloud)
+                   │
+                   ▼
+      YOLO11 Object Detection Model
+                   │
+                   ▼
+        Detection Predictions (JSON)
+                   │
+                   ▼
+     Draw Bounding Boxes & Statistics
+```
 
-**Framework:** YOLOv11 Nano
+---
 
-**Dataset:** Wall Crack Detection
+# Why Roboflow Workflows?
+
+This project uses a **Roboflow Workflow** instead of calling the object detection model directly.
+
+Advantages include:
+
+- Centralized cloud inference
+- Easier deployment
+- Workflow versioning
+- Built-in preprocessing support
+- Built-in postprocessing support
+- Future support for chaining multiple AI models
+- Streamlit application remains unchanged even if the workflow evolves
+
+For example, additional AI blocks such as OCR, image enhancement, segmentation, or classification can be added later without modifying the web application.
+
+---
+
+# Current Workflow
+
+The current workflow is intentionally simple.
+
+```
+Image Input
+      │
+      ▼
+YOLO11 Object Detection Model
+      │
+      ▼
+Predictions Output
+```
+
+Although only a single detection model is used, the workflow architecture makes future extensions much easier.
+
+---
+
+# Dataset
+
+**Dataset**
+
+Wall Crack Detection
+
+**Task**
+
+Object Detection
+
+**Model**
+
+YOLO11 Nano
 
 **Classes**
 
@@ -40,26 +106,30 @@ Unlike the local deployment version that loads `best.pt`, this application sends
 
 ---
 
-## Roboflow Dataset Preprocessing
+# Roboflow Dataset Preprocessing
 
-The hosted model uses the exact preprocessing configured in Roboflow.
+The dataset version used to train the model was generated with the following preprocessing:
 
-- ✅ Auto-Orient
-- ✅ Resize (Stretch to 640 × 640)
-- ✅ Contrast Stretching
+- Auto-Orient
+- Resize (Stretch to 640 × 640)
+- Contrast Stretching
 
-Since inference is performed directly on Roboflow's servers, the prediction results closely match those shown in the Roboflow web interface.
+These preprocessing operations were applied during dataset preparation and model training.
+
+The deployed application uses a Roboflow Workflow for cloud inference. Depending on the Workflow configuration and Roboflow inference runtime, prediction results may differ slightly from those shown in the Roboflow Dataset/Test interface. When reproducibility is critical, the inference pipeline should be validated against the deployed Workflow.
 
 ---
 
-## Project Structure
+# Project Structure
 
 ```
-Wall-Crack-Roboflow-API/
+Wall-Crack-Roboflow-Workflow/
+
 │
 ├── app.py
 ├── requirements.txt
 ├── README.md
+├── .gitignore
 │
 └── .streamlit/
     └── secrets.toml
@@ -67,21 +137,21 @@ Wall-Crack-Roboflow-API/
 
 ---
 
-## Installation
+# Installation
 
-Clone the repository
+Clone the repository.
 
 ```bash
 git clone https://github.com/<your_username>/<repository_name>.git
 ```
 
-Move into the project
+Move into the project.
 
 ```bash
 cd <repository_name>
 ```
 
-Install dependencies
+Install the required packages.
 
 ```bash
 pip install -r requirements.txt
@@ -89,29 +159,43 @@ pip install -r requirements.txt
 
 ---
 
-## Configure Roboflow API Key
+# Requirements
 
-Create the following file
+```
+streamlit
+inference-sdk
+opencv-python-headless
+numpy 
+pillow 
+```
+
+---
+
+# Configure the Roboflow API Key
+
+Create the following file locally.
 
 ```
 .streamlit/secrets.toml
 ```
 
-Add your Roboflow API key
+Add your Roboflow API key.
 
 ```toml
 ROBOFLOW_API_KEY="YOUR_API_KEY"
 ```
 
-> **Never commit your API key to GitHub.**
+> **Do not commit this file to GitHub.**
 
-When deploying to Streamlit Community Cloud, add the same key under:
+When deploying on Streamlit Community Cloud, add the same API key under:
 
 **App Settings → Secrets**
 
 ---
 
-## Run Locally
+# Running the Application
+
+Start the Streamlit application.
 
 ```bash
 streamlit run app.py
@@ -119,100 +203,153 @@ streamlit run app.py
 
 ---
 
-## Deployment
+# Deployment
 
-This project is designed for deployment on **Streamlit Community Cloud**.
+This project is designed to run on **Streamlit Community Cloud**.
 
 Deployment steps:
 
 1. Push the repository to GitHub.
-2. Log in to Streamlit Community Cloud.
+2. Sign in to Streamlit Community Cloud.
 3. Create a new application.
 4. Select this repository.
-5. Set `app.py` as the entry point.
-6. Add your Roboflow API key under **Secrets**.
+5. Set `app.py` as the main file.
+6. Add the Roboflow API key in **Secrets**.
 7. Deploy.
 
 ---
 
-## Example Workflow
+# Example Workflow
 
 ```
 Upload Image
-        │
-        ▼
-Streamlit Web App
-        │
-        ▼
-Roboflow Hosted API
-        │
-        ▼
-YOLOv11 Model
-        │
-        ▼
+      │
+      ▼
+Temporary Image File
+      │
+      ▼
+Roboflow Workflow API
+      │
+      ▼
+YOLO11 Detection Model
+      │
+      ▼
 Prediction JSON
-        │
-        ▼
-Display Detection Result
+      │
+      ▼
+Draw Bounding Boxes
+      │
+      ▼
+Display Results
 ```
 
 ---
 
-## Technologies Used
+# Technologies Used
 
 - Python
 - Streamlit
-- Roboflow Python SDK
+- Roboflow Workflows
+- Roboflow Inference SDK
 - OpenCV
 - Pillow
 - NumPy
-- Pandas
 
 ---
 
-## Why Use the Hosted API?
+# Security
 
-Compared with deploying a local YOLO model (`best.pt`), the Hosted API provides several advantages:
+The Roboflow API key is **never stored in the repository**.
 
-- No model file required
-- Smaller GitHub repository
-- Faster deployment
-- Lower memory usage
-- Predictions match Roboflow's web interface
-- No need to install PyTorch or Ultralytics
+Instead, the application securely reads the API key from Streamlit Secrets.
 
-This approach is ideal for rapid prototyping, demonstrations, and educational purposes.
+```python
+api_key = st.secrets["ROBOFLOW_API_KEY"]
+```
+
+This prevents sensitive credentials from being exposed in the source code or GitHub repository.
 
 ---
 
-## Future Improvements
+# Educational Purpose
 
-- Batch image inference
+This repository was developed as part of a machine vision demonstration to illustrate how modern AI applications can be deployed without managing GPU servers or hosting deep learning models locally.
+
+Students can learn how to:
+
+- Train an object detection model using Roboflow
+- Build an inference workflow
+- Access AI models through cloud APIs
+- Develop interactive web applications using Streamlit
+- Deploy AI applications on Streamlit Community Cloud
+- Secure API keys using Streamlit Secrets
+
+---
+
+# Possible Future Workflow
+
+The current workflow can easily be extended.
+
+```
+Image
+   │
+   ▼
+Image Enhancement
+   │
+   ▼
+Wall Crack Detection
+   │
+   ▼
+Non-Maximum Suppression
+   │
+   ▼
+Crack Severity Classification
+   │
+   ▼
+Automatic Report Generation
+```
+
+The Streamlit application would not need to change because all processing is handled inside the Roboflow Workflow.
+
+---
+
+# Future Improvements
+
 - Webcam support
 - Video crack detection
-- Detection history
+- Batch image processing
 - Download annotated images
+- Detection history
 - Crack severity estimation
 - Crack length measurement
 - Crack area estimation
+- PDF inspection report generation
 - Mobile-friendly interface
 
 ---
 
-## License
+# Screenshots
+
+![Screenshots](images/interface.png)
+
+---
+
+# License
 
 This project is released under the MIT License.
 
 ---
 
-## Acknowledgements
+# Acknowledgements
 
-This project was built using:
+This project was built using the following open-source technologies:
 
 - Roboflow
+- Roboflow Workflows
+- Roboflow Inference SDK
 - Streamlit
 - OpenCV
-- NumPy
 - Pillow
+- NumPy
 
-Special thanks to the Roboflow team for providing an excellent platform for dataset management, model training, and hosted inference.
+Special thanks to the Roboflow team for providing an excellent platform for dataset management, model training, workflow creation, and cloud-hosted inference.
