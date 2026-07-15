@@ -1,6 +1,6 @@
 # Corrected app.py for WORKFLOW_ID = "custom-workflow" or "Custom Workflow" of Model V3
 """
-What changed from the previous version
+What changed from the previous version (app_bak.py)
 - Removed the cv2 (opencv-python-headless) dependency entirely.
   Bounding boxes and labels are now drawn with PIL.ImageDraw
   instead of cv2. This avoids the recurring `ImportError:
