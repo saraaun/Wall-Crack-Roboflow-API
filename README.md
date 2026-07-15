@@ -6,11 +6,11 @@ Instead of hosting the trained model locally, this application sends uploaded im
 
 ---
 
-## 🌐 Live Demo
+<!-- ## 🌐 Live Demo
 
 **Streamlit Cloud:** https://wall-crack-roboflow-workflow.streamlit.app/
 
----
+--- -->
 
 ## Features
 
